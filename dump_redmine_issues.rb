@@ -18,7 +18,7 @@ use_cache = true
 logger = Logger.new(STDERR)
 
 OptionParser.new do |opts|
-  opts.banner = 'Usage: dump_redmine.rb [options]'
+  opts.banner = 'Usage: dump_redmine_issues.rb [options]'
 
   opts.on('-h', '--help', 'Print help') do
     puts opts
