@@ -1,6 +1,6 @@
 require 'github_api'
 
-require 'github/utils'
+require 'redminegithub/utils'
 
 module Github
   class Issue
@@ -42,15 +42,15 @@ module Github
       data = @issue.to_json
       data = JSON.parse(data)
       data = JSON.pretty_generate(data)
-      GitHub::Utils.dump_to_file(file, data)
+      RedmineGithub::Utils.dump_to_file(file, data)
     end
 
     def dump_markdown(file)
-      GitHub::Utils.dump_to_file(file, markdown)
+      RedmineGithub::Utils.dump_to_file(file, markdown)
     end
 
     def dump(file)
-      GitHub::Utils.dump_to_file(file, to_s)
+      RedmineGithub::Utils.dump_to_file(file, to_s)
     end
 
     def markdown
