@@ -1,5 +1,7 @@
 require 'github_api'
 
+require 'github/utils'
+
 module Github
   class Issue
     attr_reader :issue
@@ -40,15 +42,15 @@ module Github
       data = @issue.to_json
       data = JSON.parse(data)
       data = JSON.pretty_generate(data)
-      dump_file(file).write(data)
+      GitHub::Utils.dump_to_file(file, data)
     end
 
     def dump_markdown(file)
-      dump_file(file).write(markdown)
+      GitHub::Utils.dump_to_file(file, markdown)
     end
 
     def dump(file)
-      dump_file(file).write(to_s)
+      GitHub::Utils.dump_to_file(file, to_s)
     end
 
     def markdown
@@ -61,10 +63,6 @@ module Github
     end
 
     protected
-
-    def dump_file(file)
-      file.respond_to?(:write) ? file : File.open(file, 'w')
-    end
 
     def redmine_labels
       @labels = ['imported']
