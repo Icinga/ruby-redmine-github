@@ -4,15 +4,21 @@ require 'redmine/custom'
 module Redmine
   class Project < Redmine::Base
     def self.find_by_identifier(identifier)
-      @record = nil
+      # TODO: fix this nasty workaround
+      raise Exception, 'You can only initialize one project at the moment' if defined?(@@instance)
       Redmine::General.projects.each do |p|
         if p.identifier == identifier
-          @record = p
+          @@instance = p
           break
         end
       end
-      raise ArgumentError, "Project #{name} not found" if @record.nil?
-      @record
+      raise ArgumentError, "Project #{name} not found" if @@instance.nil?
+      @@instance
+    end
+
+    def self.instance
+      raise Exception, 'Not yet instantiated' unless @@instance
+      @@instance
     end
 
     def issues(params = {})
@@ -34,5 +40,10 @@ module Redmine
       end
       issues
     end
+
+    # TODO: implement
+    # def versions
+    #   @versions ||= Redmine::Version.find(:all, params: { :project_id => @@instance.id })
+    # end
   end
 end

@@ -14,6 +14,7 @@ Dir.chdir(File.dirname(__FILE__))
 config = YAML.parse(File.read('settings.yml')).to_ruby
 identifier = nil
 use_cache = true
+only_ids = nil
 
 logger = Logger.new(STDERR)
 
@@ -31,6 +32,10 @@ OptionParser.new do |opts|
 
   opts.on('--[no-]cache', 'Ignore cached JSON files') do |v|
     use_cache = v
+  end
+
+  opts.on('--issues=list', 'Comma separated list of issue ids to take care of') do |v|
+    only_ids = v.split(/\s*,\s*/)
   end
 end.parse!(ARGV)
 
@@ -78,10 +83,12 @@ else
   GitHub::Utils.dump_to_file(dump_file, JSON.pretty_generate(issues))
 end
 
-logger.info("Found #{issues.length} issues, pulling them all")
+logger.info("Found #{issues.length} issues")
 
 issues.each do |i|
   id = i['id']
+  next unless only_ids.nil? || only_ids.include?(id.to_s)
+
   dump_file = "#{dump}/issue/#{id}"
   json_file = "#{dump_file}.json"
 
@@ -99,3 +106,5 @@ issues.each do |i|
 
   issue.dump("#{dump_file}.md")
 end
+
+logger.info 'Done.'
