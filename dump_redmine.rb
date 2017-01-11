@@ -44,27 +44,49 @@ end
 raise Exception, 'Redmine project identifier not specified' unless identifier
 project = Redmine::Project.find_by_identifier(identifier)
 
-Dir.mkdir('dump') unless Dir.exists?('dump')
-Dir.mkdir('dump/issues') unless Dir.exists?('dump/issues')
+dump = "#{Dir.pwd}/dump"
+Dir.mkdir(dump) unless Dir.exists?(dump)
+dump = "#{dump}/#{identifier}"
+Dir.mkdir(dump) unless Dir.exists?(dump)
+Dir.mkdir("#{dump}/issue") unless Dir.exists?("#{dump}/issue")
 
 #
 # Get all RedMine issues
 #
-logger.info('Indexing issues from Redmine...')
-issues = project.issues(
-  project_id: project.id,
-  status_id:  '*'
-)
+dump_file = "#{dump}/issues.json"
+
+if use_cache && File.exists?(dump_file)
+  logger.info('Getting issues from cache...')
+
+  issues = YAML.parse(File.read(dump_file))
+  issues = issues.to_ruby if issues.respond_to?(:to_ruby)
+else
+  logger.info('Indexing issues from Redmine...')
+  issues = project.issues(
+    project_id: project.id,
+    status_id:  '*'
+  ).map do |i| # map only core data
+    {
+      id: i.id,
+      project: i.project.name,
+      tracker: i.tracker.name,
+      status: i.status.name,
+      subject: i.subject
+    }
+  end
+
+  GitHub::Utils.dump_to_file(dump_file, JSON.pretty_generate(issues))
+end
 
 logger.info("Found #{issues.length} issues, pulling them all")
 
 issues.each do |i|
-  id = i.id
-  dump = "#{Dir.pwd}/dump/issues/#{id}"
-  json_file = "#{dump}.json"
+  id = i['id']
+  dump_file = "#{dump}/issue/#{id}"
+  json_file = "#{dump_file}.json"
 
   issue = nil
-  if File.exists?(json_file)
+  if use_cache && File.exists?(json_file)
     logger.info("Loading issue \##{id} from cache")
     issue = Github::Issue.from_json(json_file)
   end
@@ -72,8 +94,8 @@ issues.each do |i|
   unless issue
     logger.info("Loading issue \##{id} from Redmine")
     issue = Github::Issue.from_redmine(id)
-    issue.dump_json("#{dump}.json")
+    issue.dump_json(json_file)
   end
 
-  issue.dump("#{dump}.md")
+  issue.dump("#{dump_file}.md")
 end
