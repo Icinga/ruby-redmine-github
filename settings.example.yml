@@ -1,0 +1,9 @@
+---
+redmine:
+  api_key: xxx
+  site: https://redmine.example.com
+
+github:
+  oauth_token: xxx
+  user: username
+  # avoid setting repo here!

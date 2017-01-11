@@ -19,19 +19,52 @@ module Github
       redmine_description
     end
 
+    def self.from_redmine(id)
+      new(Redmine::Issue.find(id, params: {
+        include: %w(changesets children attachments relations journals).join(',')
+      }))
+    end
+
+    def self.from_json(file)
+      file = File.open(file, 'r') unless file.respond_to?(:read)
+      issue = Redmine::Issue.new
+      issue.load(JSON.parse(file.read))
+      new(issue)
+    end
+
     def to_s
-      [ subject, "Labels: #{labels.join(', ')}", '-' * 80, description ].join("\n")
+      [subject, "Labels: #{labels.join(', ')}", '-' * 80, markdown].join("\n")
     end
 
-    def redmine_id
-      @issue.id
+    def dump_json(file)
+      data = @issue.to_json
+      data = JSON.parse(data)
+      data = JSON.pretty_generate(data)
+      dump_file(file).write(data)
     end
 
-    def author
-      @issue.author.name
+    def dump_markdown(file)
+      dump_file(file).write(markdown)
+    end
+
+    def dump(file)
+      dump_file(file).write(to_s)
+    end
+
+    def markdown
+      # TODO:
+      "This issue has been migrated from Icinga's Redmine Installation:\n"
+      +"#{Redmine.configuration.site}/issues/#{@issue.id}\n\n"
+      +"Author: #{@issue.author.name}\n"
+      +"\n---\n"
+      +description
     end
 
     protected
+
+    def dump_file(file)
+      file.respond_to?(:write) ? file : File.open(file, 'w')
+    end
 
     def redmine_labels
       @labels = ['imported']
