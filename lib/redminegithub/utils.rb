@@ -26,7 +26,9 @@ module RedmineGithub
     end
 
     def self.github_client(config)
-      Github.new(hash_symbolize(config['github']))
+      opts = { auto_pagination: true }
+      opts.merge!(hash_symbolize(config['github']))
+      Github.new(opts)
     end
   end
 end
