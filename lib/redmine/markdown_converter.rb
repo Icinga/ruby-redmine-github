@@ -98,15 +98,14 @@ module Redmine
               pandoc_replace(element['c'])
             when 'Str'
               # replace Str like '#12345.' with a link
-              if element['c'] =~ /^\\?#(\d+)\W?$/
-                id = $1
-                url = "#{Redmine.configuration.site}/issues/#{id}"
+              if element['c'] =~ /^\W*\\?#(\d+)\W*$/
+                url = "#{Redmine.configuration.site}/issues/#{$1}"
 
                 # replace reset the element to be a link
                 element['t'] = 'Link'
                 element['c'] = [
                   ['', [], []],
-                  [{ t: 'Str', c: "\##{id}"}],
+                  [{ t: 'Str', c: element['c'] }],
                   [url, '']
                 ]
               end
