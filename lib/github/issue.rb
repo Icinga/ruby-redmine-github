@@ -72,6 +72,7 @@ module Github
 
               Author: #{@issue.author.name}
               Assignee: #{@issue.respond_to?(:assigned_to) ? @issue.assigned_to.name : '(none)'}
+              Status: #{@issue.status.name}
               Target Version: #{@issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : '(none)'}
               Created: #{@issue.created_on}#{@issue.respond_to?(:closed_on) ? " (closed on #{@issue.closed_on})" : ''}
               Last Update: #{@issue.updated_on} (in Redmine)
@@ -82,9 +83,7 @@ module Github
         @body += redmine_description
 
         @body += "\n---\n\n"
-        # TODO: parents
-        # TODO: subtasks
-        # TODO: relations
+        @body += redmine_relations
         @body += "\n---\n\n"
         @body += redmine_journal
       end
@@ -113,6 +112,11 @@ module Github
     end
 
     protected
+
+    def redmine_link(issue_id, title = nil)
+      title = "\##{issue_id}" unless title
+      "[#{title}](#{Redmine.configuration.site}/issues/#{issue_id})"
+    end
 
     def labels_status
       case @issue.status.name
@@ -167,7 +171,7 @@ module Github
       case detail.property
         when 'attachment'
           "File added _#{detail.new_value}_"
-        when 'attr', 'cf'
+        when 'attr', 'cf', 'relation'
           if detail.name == 'description'
             term = 'updated'
           else
@@ -198,8 +202,6 @@ module Github
             Redmine::General.attr(detail.name)
           end
           "**#{name}** #{term}"
-        when 'relation'
-          # TODO: Add relation changes
         else
           raise Exception, "Unknown journal detail property: #{detail.inspect}"
       end
@@ -213,6 +215,31 @@ module Github
           str += "    #{field.name}: #{field.value}\n" if field.respond_to?(:value) && !field.value.empty?
         end
       end
+      str
+    end
+
+    def redmine_relations
+      str = ''
+      str += "**Parent Task:** #{redmine_link(@issue.parent.id)}\n\n" if @issue.respond_to?(:parent)
+
+      # child issues
+      if @issue.respond_to?(:children) && !@issue.children.empty?
+        str += "**Subtasks**:\n\n"
+        @issue.children.each do |c|
+          str += "* #{redmine_link(c.id, "#{c.tracker.name} #{c.id} - #{c.subject}")}\n"
+        end
+        str += "\n"
+      end
+
+      # relations to other issues
+      if @issue.respond_to?(:relations) && !@issue.relations.empty?
+        str += "**Relations**:\n\n"
+        @issue.relations.each do |r|
+          str += "* #{r.relation_type} #{redmine_link(r.issue_to_id)}\n"
+        end
+        str += "\n"
+      end
+      str += "\n---\n\n" unless str == ''
       str
     end
   end
