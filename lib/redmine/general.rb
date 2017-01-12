@@ -1,30 +1,47 @@
+require 'redmine/custom'
+require 'redmine/project'
+
 module Redmine
   module General
-    def self.tracker
-      return @tracker if @tracker
+    @attr_map = {
+      tracker_id:       'Tracker',
+      status_id:        'Status',
+      priority_id:      'Priority',
+      project_id:       'Project',
+      fixed_version_id: 'Target Version',
+      assigned_to_id:   'Assigned to',
+      done_ratio:       'Done %',
+      category_id:      'Category',
+    }.freeze
 
-      @tracker = {}
-      @tracker_id = {}
+    def self.attr(attr)
+      raise Exception, "Unknown attr to resolve: #{attr}" unless @attr_map.key?(attr.to_sym)
+      @attr_map[attr.to_sym]
+    end
 
-      Redmine::Tracker.find(:all).each do |t|
-        @tracker[t.id] = t.name
-        @tracker_id[t.name] = t.id
+    def self.attr_value(attr, value)
+      value = value.to_i
+      if attr =~ /_id$/
+        name = attr.gsub(/_id$/, '')
+
+        return send(name, value) unless method(name).parameters.empty?
+
+        list = send(name)
+        return value if list.nil?
+        list[value] || value
+      else
+        value
       end
     end
 
+    def self.tracker
+      lookup('tracker')
+    end
+
     def self.status
-      return if @status
-
-      @status = {}
-      @status_id = {}
-      @status_closed = []
-
-      Redmine::IssueStatuses.find(:all).each do |s|
-        @status[s.id] = s.name
-        @status_id[s.name] = s.id
-        @status_closed << s.id if s.respond_to?(:is_closed) && s.is_closed
-      end
-      @status
+      lookup('status', class_name: 'IssueStatuses')
+      # TODO:
+      # @status_closed << s.id if s.respond_to?(:is_closed) && s.is_closed
     end
 
     def self.status_id
@@ -33,15 +50,70 @@ module Redmine
       @status_id
     end
 
-    def self.status_closed
-      return @status_closed if @status_closed
-      status
-      @status_closed
+    # TODO: implement?
+    # def self.status_closed
+    #   return @status_closed if @status_closed
+    #  status
+    #   @status_closed
+    # end
+
+    def self.category
+      # TODO: fix this evil hack
+      project = Redmine::Project.instance
+      lookup('category',  class_name: 'IssueCategories', params: { project_id: project.id })
+    end
+
+    def self.project
+      lookup('project')
     end
 
     def self.projects
       return if @projects
       @projects = Redmine::Project.find(:all)
+    end
+
+    def self.priority
+      lookup('priority', class_name: 'IssuePriorities')
+    end
+
+    def self.fixed_version
+      # TODO: fix this evil hack
+      project = Redmine::Project.instance
+      lookup('version', params: { project_id: project.id })
+    end
+
+    def self.assigned_to(user_id)
+      user_id = user_id.to_i
+      @users = {} unless @users
+      return @users[user_id] if @users.key?(user_id)
+
+      user = Redmine::User.find(user_id)
+
+      return @users[user_id] = '(unknown)' if user.nil?
+      @users[user_id] = user.login
+    end
+
+    protected
+
+    def self.lookup(name, opts = {})
+      var = "@#{name}"
+      var_id = "@#{name}_id"
+      return instance_variable_get(var) if instance_variable_defined?(var)
+
+      real_var = instance_variable_set(var, {})
+      real_var_id = instance_variable_set(var_id, {})
+
+      opts[:name_attr] = 'name' unless opts.key?(:name_attr)
+      opts[:class_name] = name.sub(/^(\w)/) {|s| s.capitalize} unless opts.key?(:class_name)
+      real_class = Redmine.const_get(opts[:class_name])
+
+      find_opts = opts.key?(:params) ? { params: opts[:params] } : {}
+      real_class.find(:all, find_opts).each do |v|
+        name = v.send(opts[:name_attr])
+        real_var[v.id] = name
+        real_var_id[name] = v.id
+      end
+      real_var
     end
   end
 end
