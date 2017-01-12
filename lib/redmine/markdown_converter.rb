@@ -5,7 +5,9 @@ module Redmine
     def self.convert(textile)
       raise Exception, 'Input is invalid' if textile.nil?
       textile = prepare(textile)
-      markdown = PandocRuby.convert(textile, from: :textile, to: :markdown)
+      json = PandocRuby.convert(textile, from: :textile, to: :json)
+      json = fix_json(json)
+      markdown = PandocRuby.convert(json, from: :json, to: :markdown_github)
       fix_markdown(markdown)
     end
 
@@ -65,9 +67,54 @@ module Redmine
 
       # Un-escape Redmine quotation mark "> " that pandoc is not aware of
       # TODO: do markdown quote?
-      markdown.gsub!(/(^|\n)&gt; /, "\n> ")
+      # markdown.gsub!(/(^|\n)&gt; /, "\n> ")
+
+      # Cleanup escaped hashes
+      markdown.gsub!(/(http\S+)\\#(\S+)/, "\\1#\\2")
+
+      # Remove commit: links, so GitHub can handle the bare commit id
+      markdown.gsub!(/commit:([0-9a-f]{6,})/, "\\1")
 
       markdown
+    end
+
+    # Working with Pandoc's AST
+    def self.fix_json(json)
+      pandoc = JSON.parse(json)
+
+      pandoc_replace(pandoc)
+
+      JSON.unparse(pandoc)
+    end
+
+    # Modifing elements in Pandoc's AST
+    def self.pandoc_replace(pandoc)
+      pandoc.each do |element|
+        if element.is_a?(Array)
+          pandoc_replace(element)
+        elsif element.is_a?(Hash) && element.key?('t')
+          case element['t']
+            when 'Para'
+              pandoc_replace(element['c'])
+            when 'Str'
+              # replace Str like '#12345.' with a link
+              if element['c'] =~ /^\\?#(\d+)\W?$/
+                id = $1
+                url = "#{Redmine.configuration.site}/issues/#{id}"
+
+                # replace reset the element to be a link
+                element['t'] = 'Link'
+                element['c'] = [
+                  ['', [], []],
+                  [{ t: 'Str', c: "\##{id}"}],
+                  [url, '']
+                ]
+              end
+            else
+              # ignore
+          end
+        end
+      end
     end
   end
 end
