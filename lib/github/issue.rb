@@ -51,6 +51,7 @@ module Github
         "    Title: #{title}",
         "    Labels: #{labels.join(', ')}",
         "    Assignee: #{assignee}",
+        "    State: #{state}",
         "    Milestone: #{milestone}",
         '',
         body
@@ -58,7 +59,7 @@ module Github
     end
 
     def state
-      # TODO: closed?
+      @state ||= Redmine::General.status_closed.key?(@issue.status.id) ? 'closed' : 'open'
     end
 
     def title

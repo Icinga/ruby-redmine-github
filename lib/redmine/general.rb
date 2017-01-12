@@ -45,9 +45,10 @@ module Redmine
     end
 
     def self.status
-      lookup('status', class_name: 'IssueStatuses')
-      # TODO:
-      # @status_closed << s.id if s.respond_to?(:is_closed) && s.is_closed
+      @status_closed = {} unless @status_closed
+      lookup('status', class_name: 'IssueStatuses') do |s|
+        @status_closed[s.id] = s.name if s.respond_to?(:is_closed) && s.is_closed
+      end
     end
 
     def self.status_id
@@ -56,12 +57,11 @@ module Redmine
       @status_id
     end
 
-    # TODO: implement?
-    # def self.status_closed
-    #   return @status_closed if @status_closed
-    #  status
-    #   @status_closed
-    # end
+    def self.status_closed
+      return @status_closed if @status_closed
+     status
+      @status_closed
+    end
 
     def self.category
       # TODO: fix this evil hack
@@ -101,7 +101,7 @@ module Redmine
 
     protected
 
-    def self.lookup(name, opts = {})
+    def self.lookup(name, opts = {}, &block)
       var    = "@#{name}"
       var_id = "@#{name}_id"
       return instance_variable_get(var) if instance_variable_defined?(var)
@@ -118,6 +118,7 @@ module Redmine
         name              = v.send(opts[:name_attr])
         real_var[v.id]    = name
         real_var_id[name] = v.id
+        yield(v) if block
       end
       real_var
     end
