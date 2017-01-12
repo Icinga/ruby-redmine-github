@@ -167,16 +167,41 @@ module Github
       case detail.property
         when 'attachment'
           "File added _#{detail.new_value}_"
-        when 'attr'
-          term  = if detail.respond_to?(:old_value)
-            "changed from _#{Redmine::General.attr_value(detail.name, detail.old_value)}_"
+        when 'attr', 'cf'
+          if detail.name == 'description'
+            term = 'updated'
           else
-            'set'
+            value_old = detail.respond_to?(:old_value) ? Redmine::General.attr_value(detail.name, detail.old_value) : nil
+            value_new = detail.respond_to?(:new_value) ? Redmine::General.attr_value(detail.name, detail.new_value) : nil
+
+            term = if value_old && value_new
+              "changed from _#{value_old}_ to _#{value_new}_"
+            elsif value_old
+              "deleted ~~#{value_old}~~"
+            elsif value_new
+              "set to _#{value_new}_"
+            else
+              raise Exception, "Invalid detail: #{detail.inspect}"
+            end
           end
-          new_value = Redmine::General.attr_value(detail.name, detail.new_value)
-          "**#{Redmine::General.attr(detail.name)}** #{term} to _#{new_value}_"
+
+          name = if detail.property == 'cf'
+            field_name = '(unknown custom field)'
+            @issue.custom_fields.each do |field|
+              if field.id == detail.name.to_i
+                field_name = field.name
+                break
+              end
+            end
+            field_name
+          else
+            Redmine::General.attr(detail.name)
+          end
+          "**#{name}** #{term}"
+        when 'relation'
+          # TODO: Add relation changes
         else
-          raise Exception, "Unknown journal detail property: #{d.property}"
+          raise Exception, "Unknown journal detail property: #{detail.inspect}"
       end
     end
 
