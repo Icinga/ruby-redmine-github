@@ -15,19 +15,25 @@ module Redmine
     }.freeze
 
     def self.attr(attr)
-      raise Exception, "Unknown attr to resolve: #{attr}" unless @attr_map.key?(attr.to_sym)
+      unless @attr_map.key?(attr.to_sym)
+        return attr.sub(/^(\w)/) { |s| s.capitalize }
+          .sub(/_(\w)/) { |s| " #{$1.capitalize}" }
+      end
       @attr_map[attr.to_sym]
     end
 
     def self.attr_value(attr, value)
+      return value if value.to_i == 0
       value = value.to_i
       if attr =~ /_id$/
         name = attr.gsub(/_id$/, '')
 
+        return value if name == 'parent'
         return send(name, value) unless method(name).parameters.empty?
 
         list = send(name)
         return value if list.nil?
+        raise Exception, "Attr resolution for #{attr} is not a Hash: #{list.inspect}" unless list.is_a?(Hash)
         list[value] || value
       else
         value
@@ -60,7 +66,7 @@ module Redmine
     def self.category
       # TODO: fix this evil hack
       project = Redmine::Project.instance
-      lookup('category',  class_name: 'IssueCategories', params: { project_id: project.id })
+      lookup('category', class_name: 'IssueCategories', params: { project_id: project.id })
     end
 
     def self.project
@@ -84,7 +90,7 @@ module Redmine
 
     def self.assigned_to(user_id)
       user_id = user_id.to_i
-      @users = {} unless @users
+      @users  = {} unless @users
       return @users[user_id] if @users.key?(user_id)
 
       user = Redmine::User.find(user_id)
@@ -96,21 +102,21 @@ module Redmine
     protected
 
     def self.lookup(name, opts = {})
-      var = "@#{name}"
+      var    = "@#{name}"
       var_id = "@#{name}_id"
       return instance_variable_get(var) if instance_variable_defined?(var)
 
-      real_var = instance_variable_set(var, {})
-      real_var_id = instance_variable_set(var_id, {})
+      real_var          = instance_variable_set(var, {})
+      real_var_id       = instance_variable_set(var_id, {})
 
-      opts[:name_attr] = 'name' unless opts.key?(:name_attr)
-      opts[:class_name] = name.sub(/^(\w)/) {|s| s.capitalize} unless opts.key?(:class_name)
-      real_class = Redmine.const_get(opts[:class_name])
+      opts[:name_attr]  = 'name' unless opts.key?(:name_attr)
+      opts[:class_name] = name.sub(/^(\w)/) { |s| s.capitalize } unless opts.key?(:class_name)
+      real_class        = Redmine.const_get(opts[:class_name])
 
       find_opts = opts.key?(:params) ? { params: opts[:params] } : {}
       real_class.find(:all, find_opts).each do |v|
-        name = v.send(opts[:name_attr])
-        real_var[v.id] = name
+        name              = v.send(opts[:name_attr])
+        real_var[v.id]    = name
         real_var_id[name] = v.id
       end
       real_var
