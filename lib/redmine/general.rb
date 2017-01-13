@@ -112,6 +112,12 @@ module Redmine
       @users[user_id] = user.login
     end
 
+    # Format ISO 8601 date into a more human friendly form
+    # https://de.wikipedia.org/wiki/ISO_8601
+    def self.format_date(date)
+      date.gsub!(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(.*)$/) { "#{$1} #{$2} #{$3 == 'Z' ? 'UTC' : $3 }" }
+    end
+
     protected
 
     def self.lookup(name, opts = {}, &block)

@@ -87,8 +87,8 @@ module Github
               Assignee: #{@issue.respond_to?(:assigned_to) ? @issue.assigned_to.name : '(none)'}
               Status: #{@issue.status.name}
               Target Version: #{@issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : '(none)'}
-              Created: #{@issue.created_on}#{@issue.respond_to?(:closed_on) ? " (closed on #{@issue.closed_on})" : ''}
-              Last Update: #{@issue.updated_on} (in Redmine)
+              Created: #{Redmine::General.format_date(@issue.created_on)}#{@issue.respond_to?(:closed_on) ? " (closed on #{Redmine::General.format_date(@issue.closed_on)})" : ''}
+              Last Update: #{Redmine::General.format_date(@issue.updated_on)} (in Redmine)
         END
 
         @body += redmine_custom_fields
@@ -173,7 +173,7 @@ module Github
       journal = []
 
       @issue.journals.each do |j|
-        entry = "**Updated by #{j.user.name} on #{j.created_on}**\n\n"
+        entry = "**Updated by #{j.user.name} on #{Redmine::General.format_date(j.created_on)}**\n\n"
         if j.details
           j.details.each { |d| entry += "* #{redmine_journal_detail(d)}\n" }
           entry += "\n"
