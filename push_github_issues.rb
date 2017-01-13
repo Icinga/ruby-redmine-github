@@ -64,6 +64,8 @@ logger.info "Loading cached issues from #{dump_file}"
 
 issues = JSON.parse(File.read(dump_file))
 
+logger.info 'Indexing existing GitHub issues...'
+
 opts = { user: config['github']['user'], repo: config['github']['repo']}
 issues_existing = github.issues.list(opts.merge(state: 'all'))
 
@@ -74,6 +76,16 @@ issues_existing.each do |i|
   raise Exception, "Duplicate Redmine issue in Github: #{redmine_id} #{i.url}" if issue_by_redmine_id.key?(redmine_id)
   issue_by_redmine_id[redmine_id] = i
 end
+
+logger.info 'Indexing milestones'
+
+milestone_map = {}
+milestones = github.issues.milestones.list(opts.merge(state: 'all'))
+milestones.each do |m|
+  milestone_map[m.title] = m.number
+end
+
+logger.info 'Working on issues...'
 
 issues.each do |v|
   json_file = "#{dump}/issue/#{v['id']}.json"
@@ -87,17 +99,30 @@ issues.each do |v|
     %w(title state body).each do |f|
       value = issue.send(f)
       current = i.send(f)
-      changes[f] = value if current != value
+      changes[f.to_sym] = value if current != value
     end
 
-    # TODO: assignee(s)
-    # TODO: milestone
-    # TODO: labels
+    # assignee(s)
+    current = i.assignees.map { |n| n.login }
+    changes[:assignee] = issue.assignee unless issue.assignee.nil? || current.include?(issue.assignee)
+
+    # milestone
+    if issue.milestone
+      raise Exception, "Could not find milestone #{issue.milestone}" unless milestone_map.key?(issue.milestone)
+      milestone_number = milestone_map[issue.milestone]
+      changes[:milestone] = milestone_number if i.milestone.nil? || i.milestone.number != milestone_number
+    end
+
+    # labels
+    old_labels = i.labels.map { |l| l.name }
+    new_labels = issue.labels.select { |l| !old_labels.include?(l) }
+    changes[:labels] = old_labels + new_labels unless new_labels.empty?
 
     if changes.empty?
-      logger.info "Issue \##{i.number} already exists: #{issue.title}"
+      logger.info "Issue \##{i.number} already exists: #{issue.title} - #{i.html_url}"
     else
-      logger.info "Updating issue \"#{i.title}\" #{i.url}: #{changes.inspect}"
+      logger.info "Updating issue \"#{i.title}\" #{i.html_url}: #{changes.inspect}"
+
       github.issues.edit(changes.merge(number: i.number))
 
       # As suggested by GitHub
@@ -108,14 +133,16 @@ issues.each do |v|
     logger.info "Creating issue \"#{issue.title}\""
     data = issue.to_hash
 
-    # TODO: assignee
-    # data[:assignees] = [data.delete(:assignee)] if data.key?(:assignee)
-    data.delete(:assignee)
-    # TODO: milestone
-    data.delete(:milestone)
+    # TODO: assignee set on creation?
+
+    # milestone
+    if data[:milestone]
+      raise Exception, "Could not find milestone #{issue.milestone}" unless milestone_map.key?(issue.milestone)
+      data[:milestone] = milestone_map[issue.milestone]
+    end
 
     i = github.issues.create(data)
-    logger.info "Issue \##{i.number} created: #{issue.title}"
+    logger.info "Issue \##{i.number} created: #{issue.title} - #{issue.html_url}"
 
     # As suggested by GitHub
     # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
