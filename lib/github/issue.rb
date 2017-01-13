@@ -280,7 +280,7 @@ module Github
 
       @issue.attachments.each do |a|
         str += "* [#{a.filename}](#{a.content_url}) #{a.author.name} - _#{Redmine::General.format_date(a.created_on)}_"
-        str += " - _#{a.description}_" if a.description
+        str += " - _#{a.description}_" if a.respond_to?(:description)
         str += "\n"
       end
       str
