@@ -7,3 +7,8 @@ github:
   oauth_token: xxx
   user: username
   # avoid setting repo here!
+
+# Map of:
+# redmine user -> github user
+user_map:
+  johndoe: jdoemasterXX

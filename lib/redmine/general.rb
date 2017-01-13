@@ -40,6 +40,19 @@ module Redmine
       end
     end
 
+    def self.user_map=(map)
+      @user_map = map
+    end
+
+    def self.user_map
+      @user_map
+    end
+
+    def self.github_user(redmine_user)
+      return nil unless user_map.key?(redmine_user)
+      user_map[redmine_user]
+    end
+
     def self.tracker
       lookup('tracker')
     end

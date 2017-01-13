@@ -8,6 +8,7 @@ require 'yaml'
 require 'redmine/general'
 require 'redmine/project'
 require 'github/issue'
+require 'redminegithub/utils'
 
 Dir.chdir(File.dirname(__FILE__))
 
@@ -46,6 +47,10 @@ Redmine.configure do |c|
   end
 end
 
+# add user_map from config to resolve assignees
+Redmine::General.user_map = config['user_map'] if config.key?('user_map')
+
+# Load up redmine project
 raise Exception, 'Redmine project identifier not specified' unless identifier
 project = Redmine::Project.find_by_identifier(identifier)
 
@@ -80,7 +85,7 @@ else
     }
   end
 
-  GitHub::Utils.dump_to_file(dump_file, JSON.pretty_generate(issues))
+  RedmineGithub::Utils.dump_to_file(dump_file, JSON.pretty_generate(issues))
 end
 
 logger.info("Found #{issues.length} issues")
