@@ -5,6 +5,8 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 require 'optparse'
 require 'yaml'
+require 'net/http'
+
 require 'redmine/general'
 require 'redmine/project'
 require 'github/issue'
@@ -59,6 +61,11 @@ Dir.mkdir(dump) unless Dir.exists?(dump)
 dump = "#{dump}/#{identifier}"
 Dir.mkdir(dump) unless Dir.exists?(dump)
 Dir.mkdir("#{dump}/issue") unless Dir.exists?("#{dump}/issue")
+
+attachment_dump = "#{dump}/attachments"
+Dir.mkdir(attachment_dump) unless Dir.exists?(attachment_dump)
+attachment_dump += "/download"
+Dir.mkdir(attachment_dump) unless Dir.exists?(attachment_dump)
 
 #
 # Get all RedMine issues
@@ -121,8 +128,40 @@ issues.each do |i|
 
   issue.dump("#{dump_file}.md")
 
-  # TODO: download attachments
+  issue.attachments.each do |a|
+    dir = "#{attachment_dump}/#{a.id}"
+    file = "#{dir}/#{a.filename}"
 
+    Dir.mkdir(dir) unless Dir.exists?(dir)
+
+    unless File.exists?(file) && File.size(file) == a.filesize
+      logger.info "Downloading attachment #{a.filename} (size: #{a.filesize}) from #{a.content_url}"
+
+      uri = URI(a.content_url)
+      response = Net::HTTP.get_response(uri)
+
+      raise Exception, "Invalid HTTP response: #{response.code}" unless response.code.to_i == 200
+
+      File.open(file, 'wb') do |fh|
+        fh.write(response.body)
+        fh.close
+      end
+
+      logger.info "Attachment saved at: #{file}"
+    end
+
+    raise Exception, "file has invalid size: #{File.size(file)} != expected #{a.filesize}" unless File.size(file) == a.filesize
+
+    unless File.exists?("#{file}.json")
+      meta = a.as_json
+      meta[:issue_id] = id
+
+      File.open("#{file}.json", 'w') do |fh|
+        fh.write(JSON.pretty_generate(meta))
+        fh.close
+      end
+    end
+  end
 end
 
 logger.info 'Done.'
