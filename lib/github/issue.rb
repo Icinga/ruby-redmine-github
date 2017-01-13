@@ -94,7 +94,6 @@ module Github
         @body += redmine_custom_fields
         @body += "\n---\n\n"
         @body += redmine_description
-        @body += "\n---\n\n"
         @body += redmine_relations
         @body += redmine_journal
       end
@@ -182,7 +181,9 @@ module Github
         entry += Redmine::MarkdownConverter.convert(j.notes) if j.respond_to?(:notes)
         journal << entry
       end
-      journal.join("\n---\n\n")
+      str = journal.join("\n---\n\n")
+      str = "\n---\n\n#{str}" unless str == ''
+      str
     end
 
     def redmine_journal_detail(detail)
@@ -268,7 +269,7 @@ module Github
         end
         str += "\n"
       end
-      str += "\n---\n\n" unless str == ''
+      str = "\n---\n\n#{str}" unless str == ''
       str
     end
   end
