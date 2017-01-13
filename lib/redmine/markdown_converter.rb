@@ -18,6 +18,12 @@ module Redmine
     # @source https://github.com/Ecodev/redmine_convert_textile_to_markown/blob/master/convert_textile_to_markdown.rake
     # @license MIT
     def self.prepare(textile)
+      textile.strip!
+      textile += "\n" # ensure final new line
+
+      # Remove paragraph markup on start of lines
+      textile.gsub!(/^p\([.\s]*/, '')
+
       # Drop table colspan/rowspan notation ("|\2." or "|/2.") because pandoc does not support it
       # See https://github.com/jgm/pandoc/issues/22
       textile.gsub!(/\|[\/\\]\d\. /, '| ')
