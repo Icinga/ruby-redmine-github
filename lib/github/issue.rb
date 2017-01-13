@@ -94,6 +94,7 @@ module Github
         @body += redmine_custom_fields
         @body += "\n---\n\n"
         @body += redmine_description
+        @body += redmine_attachments
         @body += redmine_relations
         @body += redmine_journal
       end
@@ -120,12 +121,12 @@ module Github
     end
 
     def milestone
-      # TODO: resolve number
       @milestone ||= @issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : nil
     end
 
     def attachments
-      # TODO: attachments details for downloading
+      return [] unless @issue.respond_to?(:attachments)
+      @issue.attachments
     end
 
     protected
@@ -270,6 +271,18 @@ module Github
         str += "\n"
       end
       str = "\n---\n\n#{str}" unless str == ''
+      str
+    end
+
+    def redmine_attachments
+      return '' unless @issue.respond_to?(:attachments) && @issue.attachments.any?
+      str = "\n\n**Attachments**:\n\n"
+
+      @issue.attachments.each do |a|
+        str += "* [#{a.filename}](#{a.content_url}) #{a.author.name} - _#{Redmine::General.format_date(a.created_on)}_"
+        str += " - _#{a.description}_" if a.description
+        str += "\n"
+      end
       str
     end
   end
