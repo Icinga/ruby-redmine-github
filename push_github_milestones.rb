@@ -64,8 +64,25 @@ versions.each do |v|
 
   if ms_by_title.key?(milestone.title)
     ms = ms_by_title[milestone.title]
-    logger.info "Milestone exists: #{ms.number} \"#{ms.title}\" #{ms.url}"
-    # TODO: edit?
+
+    changes = {}
+    %w(description state due_on).each do |f|
+      value = milestone.send(f)
+      current = ms.send(f)
+      if f == 'due_on' && value != nil
+        # only compare date part, GitHub does not property handle UTC timestamps, also see Github::Milestone
+        value.gsub!(/T\d{2}:\d{2}:\d{2}.*$/, '')
+        current.gsub!(/T\d{2}:\d{2}:\d{2}.*$/, '')
+      end
+      changes[f] = value if current != value
+    end
+
+    if changes.empty?
+      logger.info "Milestone exists: #{ms.number} \"#{ms.title}\" #{ms.url}"
+    else
+      logger.info "Updating milestone \"#{ms.title}\" #{ms.url}: #{changes.inspect}"
+      github.issues.milestones.update(changes.merge(number: ms.number))
+    end
   else
     logger.info "Creating milestone \"#{milestone.title}\""
     ms = github.issues.milestones.create(milestone.to_hash)

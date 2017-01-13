@@ -19,7 +19,7 @@ module Github
 
     def due_on
       return nil unless @version['due_date']
-      @version['due_date'] + 'T00:00:00Z'
+      @version['due_date'] + 'T12:00:00Z' # TODO: Github seems to have a UTC problem here...
     end
 
     # TODO: do we need open for import?
