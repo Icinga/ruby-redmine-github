@@ -139,13 +139,13 @@ module Github
 
     def labels_tracker
       case name = @issue.tracker.name
-        when 'Bug'
+        when 'Bug', 'Defect'
           ['bug']
         when 'Feature'
           ['enhancement']
         else
-          # TODO: this might hit with Support
-          raise Exception, "Unhandled tracker name #{name}"
+          # create tags for all other labels
+          [name]
       end
     end
 
