@@ -11,7 +11,7 @@ module Github
 
     def initialize(data)
       @issue = data
-      raise Exception, 'Private issues can not be migrated!' if @issue.is_private
+      raise Exception, 'Private issues can not be migrated!' if @issue.respond_to?(:is_private) && @issue.is_private
     end
 
     def self.from_redmine(id)
@@ -213,7 +213,7 @@ module Github
                 field_name = field.name
                 break
               end
-            end
+            end if @issue.respond_to?(:custom_fields) && !@issue.custom_fields.respond_to?(:attributes)
             field_name
           else
             Redmine::General.attr(detail.name)
