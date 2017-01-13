@@ -120,6 +120,9 @@ issues.each do |i|
   end
 
   issue.dump("#{dump_file}.md")
+
+  # TODO: download attachments
+
 end
 
 logger.info 'Done.'
