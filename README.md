@@ -39,7 +39,20 @@ Copy `settings.example.yml` to `settings.yml` and setup your environment.
 Now have a look into the generated dump directory. This will give you an idea
 what issues will be migrated, and what the result will look like.
 
-TODO: push to GitHub
+    ./push_github_milestones.rb -R awesome -U organization -P reponame
+    ./push_github_issues.rb -R awesome -U organization -P reponame
+
+## Dump
+
+During work some data is written to the `dump` directory to help with archiving.
+
+* `<project>/issues.json` 
+* `<project>/issue/<issue_id>.json` 
+* `<project>/issue/<issue_id>.md` 
+* `<project>/versions.json` 
+* `<project>/attachments/download/<attachment_id>/<filename>` (Similar URL to what Redmine is using as download URLs) 
+* `<project>/issue_map.json` Redmine ID -> GitHub Issue URL 
+* `<project>/issue_map.txt` Redmine ID -> GitHub Issue URL 
 
 ## License
 
