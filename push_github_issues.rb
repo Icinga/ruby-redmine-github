@@ -87,6 +87,10 @@ end
 
 logger.info 'Working on issues...'
 
+# Record ID mappings
+# Redmine # -> GitHub URL
+issue_map = {}
+
 issues.each do |v|
   json_file = "#{dump}/issue/#{v['id']}.json"
   issue = Github::Issue.from_json(json_file)
@@ -118,6 +122,7 @@ issues.each do |v|
     new_labels = issue.labels.select { |l| !old_labels.include?(l) }
     changes[:labels] = old_labels + new_labels unless new_labels.empty?
 
+    issue_map[issue.id] = i.html_url
     if changes.empty?
       logger.info "Issue \##{i.number} already exists: #{issue.title} - #{i.html_url}"
     else
@@ -143,6 +148,7 @@ issues.each do |v|
 
     i = github.issues.create(data)
     logger.info "Issue \##{i.number} created: #{issue.title} - #{issue.html_url}"
+    issue_map[issue.id] = i.html_url
 
     # As suggested by GitHub
     # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
@@ -153,4 +159,21 @@ issues.each do |v|
       logger.info "Closed issue #{i.number} since original issue is done"
     end
   end
+end
+
+# dump issue map to file
+File.open(file = "#{dump}/issue_map.json", 'w') do |fh|
+  logger.info "Dumping issue map to #{file}"
+  fh.write(JSON.pretty_generate(issue_map))
+  fh.close
+end
+
+File.open(file = "#{dump}/issue_map.txt", 'w') do |fh|
+  logger.info "Dumping issue map to #{file}"
+  str = ''
+  issue_map.each do |k, v|
+    str += "#{k}\t#{v}\n"
+  end
+  fh.write(str)
+  fh.close
 end
