@@ -114,6 +114,10 @@ module Github
       @milestone ||= @issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : nil
     end
 
+    def attachments
+      # TODO: attachments details for downloading
+    end
+
     protected
 
     def redmine_link(issue_id, title = nil)
@@ -173,7 +177,18 @@ module Github
     def redmine_journal_detail(detail)
       case detail.property
         when 'attachment'
-          "File added _#{detail.new_value}_"
+          value_old = detail.respond_to?(:old_value) ? detail.old_value : nil
+          value_new = detail.respond_to?(:new_value) ? detail.new_value : nil
+          term = if value_old && value_new
+            'updated'
+          elsif value_old
+            'deleted'
+          elsif value_new
+            'added'
+          else
+            raise Exception, "Invalid detail: #{detail.inspect}"
+          end
+          "File #{term} _#{value_new || value_old}_"
         when 'attr', 'cf', 'relation'
           if detail.name == 'description'
             term = 'updated'
