@@ -82,7 +82,6 @@ module Github
         @body += redmine_custom_fields
         @body += "\n---\n\n"
         @body += redmine_description
-
         @body += "\n---\n\n"
         @body += redmine_relations
         @body += "\n---\n\n"
@@ -103,13 +102,16 @@ module Github
     end
 
     def assignee
-      # TODO:
-      nil
+      @assignee ||= if state == 'open' && @issue.respond_to?(:assigned_to)
+        Redmine::General.github_user(@issue.assigned_to.name)
+      else
+        nil
+      end
     end
 
     def milestone
       # TODO: resolve number
-      nil
+      @milestone ||= @issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : nil
     end
 
     protected
