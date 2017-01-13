@@ -84,7 +84,6 @@ module Github
         @body += redmine_description
         @body += "\n---\n\n"
         @body += redmine_relations
-        @body += "\n---\n\n"
         @body += redmine_journal
       end
       @body
@@ -227,11 +226,11 @@ module Github
 
     def redmine_custom_fields
       str = ''
-      if @issue.custom_fields
-        str += "\n"
-        @issue.custom_fields.each do |field|
-          str += "    #{field.name}: #{field.value}\n" if field.respond_to?(:value) && !field.value.empty?
-        end
+      return str unless @issue.respond_to?(:custom_fields)
+      return str if @issue.custom_fields.respond_to?(:attributes) && @issue.custom_fields.attributes.empty?
+      str += "\n"
+      @issue.custom_fields.each do |field|
+        str += "    #{field.name}: #{field.value}\n" if field.respond_to?(:value) && !field.value.empty?
       end
       str
     end
