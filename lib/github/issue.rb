@@ -58,6 +58,18 @@ module Github
       ].join("\n")
     end
 
+    def id
+      @issue.id.to_i
+    end
+
+    def to_hash
+      hash = {}
+      %w(title state body assignee labels milestone).each do |key|
+        hash[key.to_sym] = send(key)
+      end
+      hash
+    end
+
     def state
       @state ||= Redmine::General.status_closed.key?(@issue.status.id) ? 'closed' : 'open'
     end
@@ -97,7 +109,7 @@ module Github
           @labels << l unless l.nil? || l.empty?
         end
       end
-      @labels
+      @labels.flatten!
     end
 
     def assignee
