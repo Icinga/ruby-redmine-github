@@ -65,6 +65,11 @@ Dir.mkdir("#{dump}/issue") unless Dir.exists?("#{dump}/issue")
 #
 dump_file = "#{dump}/issues.json"
 
+# TODO: do this anonymous, so we only get public issues
+Redmine.configure do |c|
+  c.api_key = ''
+end
+
 if use_cache && File.exists?(dump_file)
   logger.info('Getting issues from cache...')
 
@@ -86,6 +91,11 @@ else
   end
 
   RedmineGithub::Utils.dump_to_file(dump_file, JSON.pretty_generate(issues))
+end
+
+# TODO: reset auth
+Redmine.configure do |c|
+  c.api_key = config['redmine']['api_key']
 end
 
 logger.info("Found #{issues.length} issues")
