@@ -91,6 +91,9 @@ module Redmine
       pandoc_replace(pandoc)
 
       JSON.unparse(pandoc)
+    rescue JSON::NestingError
+      # we may not be able to replace something useful there...
+      json
     end
 
     # Modifing elements in Pandoc's AST
