@@ -81,6 +81,9 @@ module Redmine
       # Remove commit: links, so GitHub can handle the bare commit id
       markdown.gsub!(/commit:([0-9a-f]{6,})/, "\\1")
 
+      # Remove HTML formatting on quotations, Github supports it
+      markdown.gsub!(/^#{Regexp.quote('&gt;')} /, '> ')
+
       markdown
     end
 
