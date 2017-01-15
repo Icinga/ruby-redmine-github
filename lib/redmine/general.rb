@@ -115,7 +115,10 @@ module Redmine
     # Format ISO 8601 date into a more human friendly form
     # https://de.wikipedia.org/wiki/ISO_8601
     def self.format_date(date)
-      date.gsub!(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(.*)$/) { "#{$1} #{$2} #{$3 == 'Z' ? 'UTC' : $3 }" }
+      return nil if date.nil?
+      date = DateTime.parse(date) unless date.is_a?(DateTime)
+      date.strftime('%F %T %Z')
+      #return date.gsub!(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(.*)$/) { "#{$1} #{$2} #{$3 == 'Z' ? 'UTC' : $3 }" }
     end
 
     protected
