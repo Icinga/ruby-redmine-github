@@ -78,6 +78,14 @@ module Github
       @title ||= "[Redmine ##{@issue.id}] #{@issue.subject}"
     end
 
+    def created_at
+      @created_at ||= DateTime.parse(@issue.created_on)
+    end
+
+    def closed_at
+      @closed_at ||= issue.respond_to?(:closed_on) ? DateTime.parse(@issue.closed_on) : nil
+    end
+
     def body
       unless @body
         @body = <<-END.gsub(/^ {10}/, '')
@@ -87,7 +95,7 @@ module Github
               Assignee: #{@issue.respond_to?(:assigned_to) ? @issue.assigned_to.name : '(none)'}
               Status: #{@issue.status.name}
               Target Version: #{@issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : '(none)'}
-              Created: #{Redmine::General.format_date(@issue.created_on)}#{@issue.respond_to?(:closed_on) ? " (closed on #{Redmine::General.format_date(@issue.closed_on)})" : ''}
+              Created: #{Redmine::General.format_date(created_at)}#{closed_at ? " (closed on #{Redmine::General.format_date(closed_at)})" : ''}
               Last Update: #{Redmine::General.format_date(@issue.updated_on)} (in Redmine)
         END
 
