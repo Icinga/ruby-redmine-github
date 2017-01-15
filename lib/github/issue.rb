@@ -9,6 +9,10 @@ module Github
     attr_reader :issue
     attr_writer :title, :body, :assignee, :labels, :milestone
 
+    attr_accessor :use_inline_comments
+
+    @use_inline_comments = true
+
     def initialize(data)
       @issue = data
       raise Exception, 'Private issues can not be migrated!' if @issue.respond_to?(:is_private) && @issue.is_private
@@ -104,9 +108,26 @@ module Github
         @body += redmine_description
         @body += redmine_attachments
         @body += redmine_relations
-        @body += redmine_journal
+        @body += redmine_journal if @use_inline_comments
       end
       @body
+    end
+
+    def comments
+      @comments ||= @issue.journals.map do |j|
+        body = "**Updated by #{j.user.name} on #{Redmine::General.format_date(j.created_on)}**\n\n"
+        if j.details
+          j.details.each { |d| body += "* #{redmine_journal_detail(d)}\n" }
+          body += "\n"
+        end
+
+        body += Redmine::MarkdownConverter.convert(j.notes) if j.respond_to?(:notes)
+
+        {
+          created_at: DateTime.parse(j.created_on).to_s,
+          body: body
+        }
+      end
     end
 
     def labels
@@ -178,19 +199,9 @@ module Github
     end
 
     def redmine_journal
-      journal = []
-
-      @issue.journals.each do |j|
-        entry = "**Updated by #{j.user.name} on #{Redmine::General.format_date(j.created_on)}**\n\n"
-        if j.details
-          j.details.each { |d| entry += "* #{redmine_journal_detail(d)}\n" }
-          entry += "\n"
-        end
-
-        entry += Redmine::MarkdownConverter.convert(j.notes) if j.respond_to?(:notes)
-        journal << entry
-      end
-      str = journal.join("\n---\n\n")
+      str = comments.map do |c|
+        c[:body]
+      end.join("\n---\n\n")
       str = "\n---\n\n#{str}" unless str == ''
       str
     end
