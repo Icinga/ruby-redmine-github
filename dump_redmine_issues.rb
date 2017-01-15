@@ -108,7 +108,7 @@ end
 logger.info("Found #{issues.length} issues")
 
 issues.each do |i|
-  id = i['id']
+  id = i['id'] || i[:id]
   next unless only_ids.nil? || only_ids.include?(id.to_s)
 
   dump_file = "#{dump}/issue/#{id}"
