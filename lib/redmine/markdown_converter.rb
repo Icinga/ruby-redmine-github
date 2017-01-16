@@ -82,7 +82,7 @@ module Redmine
       markdown.gsub!(/commit:([0-9a-f]{6,})/, "\\1")
 
       # Remove HTML formatting on quotations, Github supports it
-      markdown.gsub!(/^#{Regexp.quote('&gt;')} /, '> ')
+      markdown.gsub!(/^#{Regexp.quote('&gt;')} ?/, '> ')
 
       markdown
     end
