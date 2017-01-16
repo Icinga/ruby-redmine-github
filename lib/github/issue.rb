@@ -132,7 +132,7 @@ module Github
 
     def labels
       unless @labels
-        @labels = ['imported']
+        @labels = []
         %w(status priority tracker category).each do |k|
           l = send("labels_#{k}")
           @labels << l unless l.nil? || l.empty?
