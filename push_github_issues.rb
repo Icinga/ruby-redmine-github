@@ -14,6 +14,7 @@ Dir.chdir(File.dirname(__FILE__))
 
 config     = YAML.parse(File.read('settings.yml')).to_ruby
 identifier = nil
+only_ids   = nil
 
 logger = Logger.new(STDERR)
 
@@ -35,6 +36,10 @@ OptionParser.new do |opts|
 
   opts.on('-P name', '--github-project=name', 'Name of the GitHub repo') do |n|
     config['github']['repo'] = n
+  end
+
+  opts.on('--issues=list', 'Comma separated list of issue ids to take care of') do |v|
+    only_ids = v.split(/\s*,\s*/)
   end
 end.parse!(ARGV)
 
@@ -68,15 +73,20 @@ issues = JSON.parse(File.read(dump_file))
 logger.info 'Indexing existing GitHub issues...'
 
 opts = { user: config['github']['user'], repo: config['github']['repo']}
-issues_existing = github.issues.list(opts.merge(state: 'all'))
 
 # Indexing existing issues
 issue_by_redmine_id = {}
-issues_existing.each do |i|
+issue_number_to_redmine = {}
+
+github.issues.list(opts.merge(state: 'all')) do |i|
   next unless i.title =~ /^\[[^\]]+ #(\d+)\]/
+  unless only_ids.nil?
+    next unless only_ids.include?($1)
+  end
   redmine_id = $1.to_i
   raise Exception, "Duplicate Redmine issue in Github: #{redmine_id} #{i.url}" if issue_by_redmine_id.key?(redmine_id)
   issue_by_redmine_id[redmine_id] = i
+  issue_number_to_redmine[i.number.to_i] = redmine_id
 end
 
 # Indexing comments by issue
@@ -87,6 +97,7 @@ if config['github_api_import']
     prefix = Regexp.quote("/#{opts[:user]}/#{opts[:repo]}/")
     raise Exception, "Invalid issue url: #{c.issue_url}" unless c.issue_url =~ /#{prefix}issues\/(\d+)$/
     number = $1.to_i
+    next unless issue_number_to_redmine.key?(number)
     comments_existing[number] = [] unless comments_existing.key?(number)
     comments_existing[number] << c
   end
@@ -120,6 +131,8 @@ if config['github_api_import']
 end
 
 issues.each do |v|
+  next unless only_ids.nil? || only_ids.include?(v['id'].to_s)
+
   json_file = "#{dump}/issue/#{v['id']}.json"
   issue = Github::Issue.from_json(json_file)
   issue.use_inline_comments = false if config['github_api_import']
