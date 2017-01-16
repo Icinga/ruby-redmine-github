@@ -152,7 +152,10 @@ issues.each do |i|
       logger.info "Attachment saved at: #{file}"
     end
 
-    raise Exception, "file has invalid size: #{File.size(file)} != expected #{a.filesize}" unless File.size(file) == a.filesize
+    # TODO: unreliable...
+    # unless File.size(file) == a.filesize
+    #   raise Exception, "file has invalid size: #{File.size(file)} != expected #{a.filesize}"
+    # end
 
     unless File.exists?("#{file}.json")
       meta = a.as_json
