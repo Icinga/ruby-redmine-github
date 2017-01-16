@@ -99,12 +99,12 @@ module Github
         @body = <<-END.gsub(/^ {10}/, '')
           This issue has been migrated from Redmine: #{Redmine.configuration.site}/issues/#{@issue.id}
 
-              Author: #{@issue.author.name}
-              Assignee: #{@issue.respond_to?(:assigned_to) ? @issue.assigned_to.name : '(none)'}
-              Status: #{@issue.status.name}
-              Target Version: #{@issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : '(none)'}
-              Created: #{Redmine::General.format_date(created_at)}#{closed_at ? " (closed on #{Redmine::General.format_date(closed_at)})" : ''}
-              Last Update: #{Redmine::General.format_date(@issue.updated_on)} (in Redmine)
+          **Created by #{@issue.author.name} on #{Redmine::General.format_date(created_at)}**
+
+          Assignee: _#{@issue.respond_to?(:assigned_to) ? @issue.assigned_to.name : '(none)'}_
+          Status: _#{@issue.status.name}_ #{closed_at ? " (closed on _#{Redmine::General.format_date(closed_at)}_)" : ''}
+          Target Version: _#{@issue.respond_to?(:fixed_version) ? @issue.fixed_version.name : '(none)'}_
+          Last Update: _#{Redmine::General.format_date(@issue.updated_on)} (in Redmine)_
         END
 
         @body += redmine_custom_fields
