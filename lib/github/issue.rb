@@ -111,6 +111,7 @@ module Github
         @body += "\n---\n\n"
         @body += redmine_description
         @body += redmine_attachments
+        @body += redmine_changesets
         @body += redmine_relations
         @body += redmine_journal if @use_inline_comments
       end
@@ -313,6 +314,18 @@ module Github
         str += "* [#{a.filename}](#{a.content_url}) #{a.author.name} - _#{Redmine::General.format_date(a.created_on)}_"
         str += " - _#{a.description}_" if a.respond_to?(:description) && !a.description.nil? && a.description.strip != ''
         str += "\n"
+      end
+      str
+    end
+
+    def redmine_changesets
+      return '' unless @issue.respond_to?(:changesets) && @issue.changesets.any?
+      str = "\n\n**Changesets**\n\n"
+
+      @issue.changesets.each do |c|
+        str += "_#{Redmine::General.format_date(c.committed_on)}_ by _#{c.user.name}_ #{c.revision}\n\n"
+        str += c.comments.strip.gsub(/^/, '    ')
+        str += "\n\n"
       end
       str
     end
