@@ -31,7 +31,7 @@ module Redmine
       while params[:limit].nil? || issues.size < params[:limit]
         _limit = (params[:limit].nil? || params[:limit] > 100) ? 100 : (params[:limit] - _offset)
 
-        _params = params.merge(offset: _offset, limit: _limit)
+        _params = params.merge(offset: _offset, limit: _limit, sort: 'id')
         page = Redmine::Issue.find(:all, params: _params)
         _offset += _limit
 

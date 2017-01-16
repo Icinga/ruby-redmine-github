@@ -52,7 +52,8 @@ logger.info('Indexing versions from Redmine...')
 
 versions = Redmine::Version.find(:all, params: {
   project_id: project.id,
-  status: '*'
+  status: '*',
+  sort: 'id'
 })
 
 file = File.open(dump_file, 'w')
