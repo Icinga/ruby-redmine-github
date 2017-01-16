@@ -14,7 +14,7 @@ module Github
     end
 
     def description
-      "Imported from Redmine\n\n" + @version['description']
+      @version['description']
     end
 
     def due_on
