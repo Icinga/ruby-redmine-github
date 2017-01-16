@@ -323,7 +323,8 @@ module Github
       str = "\n\n**Changesets**\n\n"
 
       @issue.changesets.each do |c|
-        str += "_#{Redmine::General.format_date(c.committed_on)}_ by _#{c.user.name}_ #{c.revision}\n\n"
+        str += "_#{Redmine::General.format_date(c.committed_on)}_"
+        str += " by _#{c.respond_to?(:user) ? c.user.name : '(unknown)'}_ #{c.revision}\n\n"
         str += c.comments.strip.gsub(/^/, '    ')
         str += "\n\n"
       end
