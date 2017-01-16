@@ -117,6 +117,12 @@ logger.info 'Working on issues...'
 # Redmine # -> GitHub URL
 issue_map = {}
 
+# As suggested by GitHub
+# https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
+def github_sleep
+  sleep(0.5)
+end
+
 # Check for pending issues
 is_pending = false
 if config['github_api_import']
@@ -173,9 +179,7 @@ issues.each do |v|
 
       github.issues.edit(changes.merge(number: existing.number))
 
-      # As suggested by GitHub
-      # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
-      sleep(0.5)
+      github_sleep
     end
 
     # Do we need to update / create comments?
@@ -195,6 +199,7 @@ issues.each do |v|
               data = { body: c[:body] }
               logger.info "Updating comment #{ec.id} on issue #{existing.number} - #{ec.html_url} - #{data.inspect}"
               github.issues.comments.edit data.merge(id: ec.id)
+              github_sleep
             end
             found = true
             break
@@ -205,6 +210,7 @@ issues.each do |v|
           data = { body: c[:body] }
           ec = github.issues.comments.create data.merge(number: existing.number)
           logger.info "Created comment #{ec.id} on issue #{existing.number} - #{ec.html_url} - #{data.inspect}"
+          github_sleep
         end
       end
     end
@@ -235,10 +241,7 @@ issues.each do |v|
       created = github.issues.create(data)
       logger.info "Issue \##{created.number} created: #{issue.title} - #{issue.html_url}"
       issue_map[issue.id] = created.html_url
-
-      # As suggested by GitHub
-      # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
-      sleep(1)
+      github_sleep
 
       if issue.state == 'closed'
         github.issues.edit(number: created.number, state: 'closed')
