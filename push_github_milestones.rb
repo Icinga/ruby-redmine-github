@@ -42,7 +42,8 @@ raise Exception, 'GitHub repo not specified' unless config['github']['repo']
 
 github = RedmineGithub::Utils.github_client(config)
 
-dump_file = "#{Dir.pwd}/dump/#{identifier}/versions.json"
+dump = "#{Dir.pwd}/dump/#{identifier}"
+dump_file = "#{dump}/versions.json"
 
 raise Exception, "Missing cached versions at #{dump_file}" unless File.exists?(dump_file)
 
@@ -58,6 +59,8 @@ milestones.each do |ms|
   raise Exception, "Milestone title \"#{ms.title}\" is duplicated!" if ms_by_title[ms.title]
   ms_by_title[ms.title] = ms
 end
+
+version_map = {}
 
 versions.each do |v|
   milestone = Github::Milestone.new(github, v)
@@ -78,14 +81,33 @@ versions.each do |v|
     end
 
     if changes.empty?
-      logger.info "Milestone exists: #{ms.number} \"#{ms.title}\" #{ms.url}"
+      logger.info "Milestone exists: #{ms.number} \"#{ms.title}\" #{ms.html_url}"
     else
-      logger.info "Updating milestone \"#{ms.title}\" #{ms.url}: #{changes.inspect}"
+      logger.info "Updating milestone \"#{ms.title}\" #{ms.html_url}: #{changes.inspect}"
       github.issues.milestones.update(changes.merge(number: ms.number))
     end
   else
     logger.info "Creating milestone \"#{milestone.title}\""
     ms = github.issues.milestones.create(milestone.to_hash)
-    logger.info "Created milestone #{ms.number} \"#{ms.title}\""
+    logger.info "Created milestone #{ms.number} \"#{ms.title}\": #{ms.html_url}"
   end
+
+  version_map[v['version']['id']] = ms.html_url
+end
+
+# dump issue map to file
+File.open(file = "#{dump}/version_map.json", 'w') do |fh|
+  logger.info "Dumping version map to #{file}"
+  fh.write(JSON.pretty_generate(version_map))
+  fh.close
+end
+
+File.open(file = "#{dump}/version_map.txt", 'w') do |fh|
+  logger.info "Dumping version map to #{file}"
+  str = ''
+  version_map.each do |k, v|
+    str += "#{k}\t#{v}\n"
+  end
+  fh.write(str)
+  fh.close
 end
