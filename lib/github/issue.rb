@@ -125,7 +125,7 @@ module Github
           body += "\n"
         end
 
-        body += Redmine::MarkdownConverter.convert(j.notes) if j.respond_to?(:notes)
+        body += replace_attachment_links(Redmine::MarkdownConverter.convert(j.notes)) if j.respond_to?(:notes)
 
         {
           created_at: DateTime.parse(j.created_on).to_s,
@@ -200,7 +200,14 @@ module Github
     end
 
     def redmine_description
-      Redmine::MarkdownConverter.convert(@issue.description.strip)
+      replace_attachment_links(Redmine::MarkdownConverter.convert(@issue.description.strip))
+    end
+
+    def replace_attachment_links(markdown)
+      @issue.attachments.each do |a|
+        markdown.gsub!(/!\[\]\(#{Regexp.quote a.filename}\)/, "![#{a.filename}](#{a.content_url})")
+      end
+      markdown
     end
 
     def redmine_journal
