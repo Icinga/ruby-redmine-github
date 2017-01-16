@@ -141,8 +141,9 @@ module Github
           l = send("labels_#{k}")
           @labels << l unless l.nil? || l.empty?
         end
+        @labels.flatten!
       end
-      @labels.flatten!
+      @labels
     end
 
     def assignee
