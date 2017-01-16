@@ -128,6 +128,7 @@ issues.each do |i|
 
   issue.subject_prefix = config['github_subject_prefix'] if config.key?('github_subject_prefix')
 
+  issue.use_inline_comments = true
   issue.dump("#{dump_file}.md")
 
   issue.attachments.each do |a|
