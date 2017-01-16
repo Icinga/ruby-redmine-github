@@ -299,11 +299,11 @@ module Github
 
     def redmine_attachments
       return '' unless @issue.respond_to?(:attachments) && @issue.attachments.any?
-      str = "\n\n**Attachments**:\n\n"
+      str = "\n\n**Attachments**\n\n"
 
       @issue.attachments.each do |a|
         str += "* [#{a.filename}](#{a.content_url}) #{a.author.name} - _#{Redmine::General.format_date(a.created_on)}_"
-        str += " - _#{a.description}_" if a.respond_to?(:description)
+        str += " - _#{a.description}_" if a.respond_to?(:description) && !a.description.nil? && a.description.strip != ''
         str += "\n"
       end
       str
