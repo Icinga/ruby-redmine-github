@@ -42,17 +42,23 @@ what issues will be migrated, and what the result will look like.
     ./push_github_milestones.rb -R awesome -U organization -P reponame
     ./push_github_issues.rb -R awesome -U organization -P reponame
 
+To add a comment in Redmine, that the issue has been migrated:
+
+    ./push_redmine_redirect_comments.rb -R awesome
+
 ## Dump
 
 During work some data is written to the `dump` directory to help with archiving.
 
-* `<project>/issues.json` 
-* `<project>/issue/<issue_id>.json` 
-* `<project>/issue/<issue_id>.md` 
-* `<project>/versions.json` 
+* `<project>/issues.json` List of all issues (does not include all data)
+* `<project>/issue/<issue_id>.json` Full issue data retrieved from Redmine 
+* `<project>/issue/<issue_id>.md` Markdown output for review
+* `<project>/versions.json` All versions from Redmine
 * `<project>/attachments/download/<attachment_id>/<filename>` (Similar URL to what Redmine is using as download URLs) 
-* `<project>/issue_map.json` Redmine ID -> GitHub Issue URL 
-* `<project>/issue_map.txt` Redmine ID -> GitHub Issue URL 
+* `<project>/issue_map.json` Redmine Issue ID -> GitHub Issue URL 
+* `<project>/issue_map.txt` Redmine Issue ID -> GitHub Issue URL 
+* `<project>/version_map.json` Redmine Version ID -> GitHub Issue URL 
+* `<project>/version_map.txt` Redmine Version ID -> GitHub Issue URL 
 
 ## License
 
