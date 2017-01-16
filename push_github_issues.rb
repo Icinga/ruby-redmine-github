@@ -207,6 +207,9 @@ issues.each do |v|
         end if comments_existing.key?(existing.number)
 
         unless found
+          # TODO: this should not happen, throwing an exception for now!
+          raise Exception, "Want to create comment, WHY? - #{existing.inspect}"
+
           data = { body: c[:body] }
           ec = github.issues.comments.create data.merge(number: existing.number)
           logger.info "Created comment #{ec.id} on issue #{existing.number} - #{ec.html_url} - #{data.inspect}"
