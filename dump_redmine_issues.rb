@@ -126,6 +126,8 @@ issues.each do |i|
     issue.dump_json(json_file)
   end
 
+  issue.subject_prefix = config['github_subject_prefix'] if config.key?('github_subject_prefix')
+
   issue.dump("#{dump_file}.md")
 
   issue.attachments.each do |a|

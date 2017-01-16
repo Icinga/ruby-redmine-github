@@ -15,6 +15,10 @@ github:
 # When you want to use the Github Import API
 #github_api_import: true
 
+# How the issue on Github should be prefixed
+# Looks like: [PREFIX #1234] <subject>
+#github_subject_prefix: 'Redmine'
+
 # Map of:
 # redmine user -> github user
 user_map:

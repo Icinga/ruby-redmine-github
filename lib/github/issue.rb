@@ -7,7 +7,7 @@ require 'redmine/markdown_converter'
 module Github
   class Issue
     attr_reader :issue
-    attr_writer :title, :body, :assignee, :labels, :milestone
+    attr_writer :title, :body, :assignee, :labels, :milestone, :subject_prefix
 
     attr_accessor :use_inline_comments
 
@@ -78,8 +78,12 @@ module Github
       @state ||= Redmine::General.status_closed.key?(@issue.status.id) ? 'closed' : 'open'
     end
 
+    def subject_prefix
+      @subject_prefix ||= 'Redmine'
+    end
+
     def title
-      @title ||= "[Redmine ##{@issue.id}] #{@issue.subject}"
+      @title ||= "[#{subject_prefix} ##{@issue.id}] #{@issue.subject}"
     end
 
     def created_at

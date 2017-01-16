@@ -73,7 +73,7 @@ issues_existing = github.issues.list(opts.merge(state: 'all'))
 # Indexing existing issues
 issue_by_redmine_id = {}
 issues_existing.each do |i|
-  next unless i.title =~ /^\[Redmine #(\d+)\]/
+  next unless i.title =~ /^\[[^\]]+ #(\d+)\]/
   redmine_id = $1.to_i
   raise Exception, "Duplicate Redmine issue in Github: #{redmine_id} #{i.url}" if issue_by_redmine_id.key?(redmine_id)
   issue_by_redmine_id[redmine_id] = i
@@ -123,6 +123,7 @@ issues.each do |v|
   json_file = "#{dump}/issue/#{v['id']}.json"
   issue = Github::Issue.from_json(json_file)
   issue.use_inline_comments = false if config['github_api_import']
+  issue.subject_prefix = config['github_subject_prefix'] if config.key?('github_subject_prefix')
 
   if issue_by_redmine_id.key?(issue.id)
     existing = issue_by_redmine_id[issue.id]
