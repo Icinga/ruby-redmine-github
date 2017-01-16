@@ -8,6 +8,13 @@ github:
   user: username
   # avoid setting repo here!
 
+  # To enable Github API preview for the issue import API:
+  #headers:
+  #  Accept: application/vnd.github.golden-comet-preview
+
+# When you want to use the Github Import API
+#github_api_import: true
+
 # Map of:
 # redmine user -> github user
 user_map:
