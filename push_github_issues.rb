@@ -6,6 +6,8 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'optparse'
 require 'yaml'
 require 'redminegithub/utils'
+require 'github_api'
+require 'github_api/client/import' # NOTE: This patches github_api and is needed
 require 'github/issue'
 
 Dir.chdir(File.dirname(__FILE__))
@@ -61,7 +63,6 @@ dump_file = "#{dump}/issues.json"
 raise Exception, "Missing cached issues at #{dump_file}" unless File.exists?(dump_file)
 
 logger.info "Loading cached issues from #{dump_file}"
-
 issues = JSON.parse(File.read(dump_file))
 
 logger.info 'Indexing existing GitHub issues...'
@@ -69,12 +70,26 @@ logger.info 'Indexing existing GitHub issues...'
 opts = { user: config['github']['user'], repo: config['github']['repo']}
 issues_existing = github.issues.list(opts.merge(state: 'all'))
 
+# Indexing existing issues
 issue_by_redmine_id = {}
 issues_existing.each do |i|
   next unless i.title =~ /^\[Redmine #(\d+)\]/
   redmine_id = $1.to_i
   raise Exception, "Duplicate Redmine issue in Github: #{redmine_id} #{i.url}" if issue_by_redmine_id.key?(redmine_id)
   issue_by_redmine_id[redmine_id] = i
+end
+
+# Indexing comments by issue
+comments_existing = {}
+if config['github_api_import']
+  logger.info 'Indexing existing comments on issues...'
+  github.issues.comments.list do |c|
+    prefix = Regexp.quote("/#{opts[:user]}/#{opts[:repo]}/")
+    raise Exception, "Invalid issue url: #{c.issue_url}" unless c.issue_url =~ /#{prefix}issues\/(\d+)$/
+    number = $1.to_i
+    comments_existing[number] = [] unless comments_existing.key?(number)
+    comments_existing[number] << c
+  end
 end
 
 logger.info 'Indexing milestones'
@@ -91,54 +106,97 @@ logger.info 'Working on issues...'
 # Redmine # -> GitHub URL
 issue_map = {}
 
+# Check for pending issues
+is_pending = false
+if config['github_api_import']
+  logger.info 'Checking for pending issues in import...'
+  pending = 0
+  # TODO: filter by status possible?
+  github.import.issues.list { |i| pending += 1 if i.status == 'pending' }
+  if pending > 0
+    logger.error "There are #{pending} imported issues, we need to wait for them to complete/fail..."
+    exit(1)
+  end
+end
+
 issues.each do |v|
   json_file = "#{dump}/issue/#{v['id']}.json"
   issue = Github::Issue.from_json(json_file)
+  issue.use_inline_comments = false if config['github_api_import']
 
   if issue_by_redmine_id.key?(issue.id)
-    i = issue_by_redmine_id[issue.id]
+    existing = issue_by_redmine_id[issue.id]
 
     changes = {}
 
     %w(title state body).each do |f|
       value = issue.send(f)
-      current = i.send(f)
+      current = existing.send(f)
       changes[f.to_sym] = value if current != value
     end
 
     # assignee(s)
-    current = i.assignees.map { |n| n.login }
+    current = existing.assignees.map { |n| n.login }
     changes[:assignee] = issue.assignee unless issue.assignee.nil? || current.include?(issue.assignee)
 
     # milestone
     if issue.milestone
       raise Exception, "Could not find milestone #{issue.milestone}" unless milestone_map.key?(issue.milestone)
       milestone_number = milestone_map[issue.milestone]
-      changes[:milestone] = milestone_number if i.milestone.nil? || i.milestone.number != milestone_number
+      changes[:milestone] = milestone_number if existing.milestone.nil? || existing.milestone.number != milestone_number
     end
 
     # labels
-    old_labels = i.labels.map { |l| l.name }
+    old_labels = existing.labels.map { |l| l.name }
     new_labels = issue.labels.select { |l| !old_labels.include?(l) }
     changes[:labels] = old_labels + new_labels unless new_labels.empty?
 
-    issue_map[issue.id] = i.html_url
+    issue_map[issue.id] = existing.html_url
     if changes.empty?
-      logger.info "Issue \##{i.number} already exists: #{issue.title} - #{i.html_url}"
+      logger.info "Issue \##{existing.number} already exists: #{issue.title} - #{existing.html_url}"
     else
-      logger.info "Updating issue \"#{i.title}\" #{i.html_url}: #{changes.inspect}"
+      logger.info "Updating issue \"#{existing.title}\" #{existing.html_url}: #{changes.inspect}"
 
-      github.issues.edit(changes.merge(number: i.number))
+      github.issues.edit(changes.merge(number: existing.number))
 
       # As suggested by GitHub
       # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
-      sleep(1)
+      sleep(0.5)
+    end
+
+    # Do we need to update / create comments?
+    if config['github_api_import']
+      issue.comments.each do |c|
+        timestamp = DateTime.parse(c[:created_at])
+        found = false
+
+        comments_existing[existing.number].each do |ec|
+          # TODO: match user!
+          unless ec.body =~ /^\*\*Updated by .+ on (.+)\*\*\r?$/
+            raise Exception, "Could not find timestamp in comment: #{ec.inspect}"
+          end
+          if DateTime.parse($1) == timestamp
+            # found matching comment
+            unless ec.body == c[:body]
+              data = { body: c[:body] }
+              logger.info "Updating comment #{ec.id} on issue #{existing.number} - #{ec.html_url} - #{data.inspect}"
+              github.issues.comments.edit data.merge(id: ec.id)
+            end
+            found = true
+            break
+          end
+        end if comments_existing.key?(existing.number)
+
+        unless found
+          data = { body: c[:body] }
+          ec = github.issues.comments.create data.merge(number: existing.number)
+          logger.info "Created comment #{ec.id} on issue #{existing.number} - #{ec.html_url} - #{data.inspect}"
+        end
+      end
     end
   else
     logger.info "Creating issue \"#{issue.title}\""
     data = issue.to_hash
-
-    # TODO: assignee set on creation?
 
     # milestone
     if data[:milestone]
@@ -146,34 +204,54 @@ issues.each do |v|
       data[:milestone] = milestone_map[issue.milestone]
     end
 
-    i = github.issues.create(data)
-    logger.info "Issue \##{i.number} created: #{issue.title} - #{issue.html_url}"
-    issue_map[issue.id] = i.html_url
+    if config['github_api_import']
+      import_data = { issue: data.merge(created_at: issue.created_at) }
+      import_data[:issue].delete(:state)
 
-    # As suggested by GitHub
-    # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
-    sleep(1)
+      if issue.state == 'closed'
+        import_data[:issue][:closed_at] = issue.closed_at
+        import_data[:issue][:closed] = true
+      end
 
-    if issue.state == 'closed'
-      github.issues.edit(number: i.number, state: 'closed')
-      logger.info "Closed issue #{i.number} since original issue is done"
+      import_data[:comments] = issue.comments
+
+      github.import.issues.create(import_data)
+      is_pending = true
+    else
+      created = github.issues.create(data)
+      logger.info "Issue \##{created.number} created: #{issue.title} - #{issue.html_url}"
+      issue_map[issue.id] = created.html_url
+
+      # As suggested by GitHub
+      # https://developer.github.com/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
+      sleep(1)
+
+      if issue.state == 'closed'
+        github.issues.edit(number: created.number, state: 'closed')
+        logger.info "Closed issue #{created.number} since original issue is done"
+      end
     end
   end
 end
 
-# dump issue map to file
-File.open(file = "#{dump}/issue_map.json", 'w') do |fh|
-  logger.info "Dumping issue map to #{file}"
-  fh.write(JSON.pretty_generate(issue_map))
-  fh.close
-end
-
-File.open(file = "#{dump}/issue_map.txt", 'w') do |fh|
-  logger.info "Dumping issue map to #{file}"
-  str = ''
-  issue_map.each do |k, v|
-    str += "#{k}\t#{v}\n"
+if is_pending
+  logger.warn 'Can not write issue map, some issues where just imported, or are pending!'
+  exit(1)
+else
+  # dump issue map to file
+  File.open(file = "#{dump}/issue_map.json", 'w') do |fh|
+    logger.info "Dumping issue map to #{file}"
+    fh.write(JSON.pretty_generate(issue_map))
+    fh.close
   end
-  fh.write(str)
-  fh.close
+
+  File.open(file = "#{dump}/issue_map.txt", 'w') do |fh|
+    logger.info "Dumping issue map to #{file}"
+    str = ''
+    issue_map.each do |k, v|
+      str += "#{k}\t#{v}\n"
+    end
+    fh.write(str)
+    fh.close
+  end
 end
