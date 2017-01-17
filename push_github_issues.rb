@@ -183,7 +183,8 @@ issues.each do |v|
     end
 
     # Do we need to update / create comments?
-    if config['github_api_import']
+    # TODO: disabled for now - comment comparsion, maybe retrieval is unreliable...
+    if false && config['github_api_import']
       issue.comments.each do |c|
         timestamp = DateTime.parse(c[:created_at])
         found = false
@@ -208,9 +209,9 @@ issues.each do |v|
 
         unless found
           # TODO: this should not happen, throwing an exception for now!
-          raise Exception, "Want to create comment, WHY? - #{existing.inspect}"
-
           data = { body: c[:body] }
+          raise Exception, "Want to create comment, WHY? - #{data.inspect}"
+
           ec = github.issues.comments.create data.merge(number: existing.number)
           logger.info "Created comment #{ec.id} on issue #{existing.number} - #{ec.html_url} - #{data.inspect}"
           github_sleep
