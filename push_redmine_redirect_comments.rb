@@ -72,7 +72,10 @@ issues.each do |i|
   id = i[:id]
   next unless only_ids.nil? || only_ids.include?(id.to_s)
 
-  raise Exception, "Issue \##{id} not found in Issue map!" unless issue_map.key?(id.to_s)
+  unless issue_map.key?(id.to_s)
+    logger.error "Issue \##{id} not found in Issue map!"
+    next
+  end
 
   logger.info("Loading issue \##{id} from Redmine")
   issue = Github::Issue.from_redmine(id)
