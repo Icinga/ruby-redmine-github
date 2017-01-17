@@ -21,6 +21,9 @@ module Redmine
       textile.strip!
       textile += "\n" # ensure final new line
 
+      # Try to replace icingaweb2 stacktraces by code blocks
+      textile.gsub!(/((?:^#\d+ .*?\r?\n)+)/m, "<pre>\n\\1</pre>\n")
+
       # Remove paragraph markup on start of lines
       textile.gsub!(/^p\([.\s]*/, '')
 
