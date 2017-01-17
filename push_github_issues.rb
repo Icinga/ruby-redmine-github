@@ -91,7 +91,8 @@ end
 
 # Indexing comments by issue
 comments_existing = {}
-if config['github_api_import']
+# TODO: disabled for now - comment comparsion, maybe retrieval is unreliable...
+if false && config['github_api_import']
   logger.info 'Indexing existing comments on issues...'
   github.issues.comments.list do |c|
     prefix = Regexp.quote("/#{opts[:user]}/#{opts[:repo]}/")
