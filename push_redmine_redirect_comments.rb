@@ -85,7 +85,7 @@ issues.each do |i|
   found = false
   if issue.issue.respond_to?(:journals)
     issue.issue.journals.each do |c|
-      next unless c.notes
+      next unless c.respond_to?(:notes)
       if c.notes =~ /#{message_pattern}/
         found = c.id
         # TODO: check correct URL?
